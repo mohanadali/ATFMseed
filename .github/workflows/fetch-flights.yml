@@ -1,0 +1,27 @@
+name: fetch-flights
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch OpenSky data
+        run: |
+          mkdir -p docs/data
+          curl -s "https://opensky-network.org/api/states/all?lamin=28&lomin=38&lamax=37&lomax=49" \
+          | jq '{states: .states}' > docs/data/flights.json
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/data/flights.json
+          git commit -m "Update flights data" || echo "No changes"
+          git push
