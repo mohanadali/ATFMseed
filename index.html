@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Baghdad FIR — Interactive ATFM counts</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; display:flex; gap:16px; padding:12px; }
+    #left { flex: 1 1 60%; min-width: 420px; }
+    #right { width: 360px; }
+    #map { height:60vh; border:1px solid #ddd; }
+    .card { background:#fff; padding:10px; margin-bottom:10px; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.06); }
+    h2 { margin:0 0 8px 0; }
+    table { width:100%; border-collapse: collapse; font-size:0.95rem;}
+    th, td { text-align:left; padding:6px 8px; border-bottom:1px solid #eee; }
+    #alarm { padding:8px; border-radius:6px; font-weight:700; color:#fff; text-align:center;}
+    .alarm-off { background: #4CAF50; } /* green when OK */
+    .alarm-on { background: #D32F2F; }  /* red when peak */
+    .small { font-size:0.9rem; color:#555; }
+    input[type=time], select { width:100%; padding:6px; margin-top:6px; margin-bottom:6px; }
+    button { padding:6px 10px; }
+    #schedule-list { max-height:200px; overflow:auto; }
+    .sched-row { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+    .sched-row span { flex:1; }
+  </style>
+</head>
+<body>
+  <div id="left">
+    <div class="card">
+      <h2>Baghdad FIR — Live ATFM counts (FL240+)</h2>
+      <div class="small">UTC time: <span id="utc-time">--:--:--</span></div>
+      <div id="map"></div>
+    </div>
+
+    <div class="card">
+      <h3>Counts (FL bands)</h3>
+      <table>
+        <thead><tr><th>Band</th><th>North</th><th>South</th><th>Total</th></tr></thead>
+        <tbody>
+          <tr><td>FL240–350</td><td id="n_240_350">0</td><td id="s_240_350">0</td><td id="t_240_350">0</td></tr>
+          <tr><td>FL360–460</td><td id="n_360_460">0</td><td id="s_360_460">0</td><td id="t_360_460">0</td></tr>
+          <tr><td>All ≥FL240</td><td id="n_all">0</td><td id="s_all">0</td><td id="t_all">0</td></tr>
+        </tbody>
+      </table>
+      <div class="small" style="margin-top:8px">Dividing line is Baghdad latitude: <span id="bag-lat">33.3128</span> (editable)</div>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="card">
+      <div id="alarm" class="alarm-off">No peak (green)</div>
+      <div class="small" style="margin-top:8px">Peak windows (UTC) — edit below and Save</div>
+      <div id="schedule-list" class="small"></div>
+      <hr/>
+      <div>
+        <label>Start (UTC time):<input id="start-time" type="time" value="05:30"/></label>
+        <label>End (UTC time):<input id="end-time" type="time" value="07:30"/></label>
+        <label>Sector:
+          <select id="sector">
+            <option value="South">South</option>
+            <option value="North">North</option>
+          </select>
+        </label>
+        <label>Band:
+          <select id="band">
+            <option value="both">Both</option>
+            <option value="240-350">FL240–350</option>
+            <option value="360-460">FL360–460</option>
+            <option value="all">All ≥FL240</option>
+          </select>
+        </label>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button id="add-sched">Add window</button>
+          <button id="save-sched">Save (local)</button>
+          <button id="reset-sched">Reset example</button>
+        </div>
+      </div>
+      <hr/>
+      <div class="small">
+        <strong>Notes</strong>
+        <ul>
+          <li>This page reads docs/data/flights.json (written by the GitHub Action). The Action runs every 5 minutes.</li>
+          <li>FL thresholds use altitude in meters (approx): FL240 ≈ 7315 m, FL350 ≈ 10668 m, FL360 ≈ 10973 m, FL460 ≈ 14021 m.</li>
+          <li>Edit schedule windows here. They are saved in the browser (localStorage). If you want these committed into repo, tell me and I will update the workflow to write a schedule file.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

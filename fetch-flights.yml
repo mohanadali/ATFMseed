@@ -1,0 +1,84 @@
+name: Fetch OpenSky flights
+on:
+  schedule:
+    # every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Fetch flights and write JSON
+        run: |
+          python - <<'PY'
+          import requests, json, time, os
+          # OpenSky public endpoint (anonymous). If you have credentials, you can use basic auth.
+          url = "https://opensky-network.org/api/states/all"
+          r = requests.get(url, timeout=30)
+          if r.status_code != 200:
+              print("Failed to fetch OpenSky:", r.status_code, r.text)
+              raise SystemExit(1)
+          data = r.json()
+          states = data.get("states") or []
+
+          # Simple bounding box for Baghdad FIR (adjust if you want a more precise FIR polygon)
+          lat_min, lat_max = 28.0, 37.0
+          lon_min, lon_max = 38.0, 49.0
+
+          filtered = []
+          for s in states:
+              # OpenSky state vector indices:
+              # 0: icao24, 1: callsign, 2: origin_country, 3: time_position, 4: last_contact,
+              # 5: longitude, 6: latitude, 7: baro_altitude (m), 8: on_ground, 9: velocity (m/s), 10: heading, ...
+              lon = s[5]
+              lat = s[6]
+              if lat is None or lon is None:
+                  continue
+              if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
+                  filtered.append({
+                      "icao24": s[0],
+                      "callsign": (s[1] or "").strip(),
+                      "origin_country": s[2],
+                      "time_position": s[3],
+                      "last_contact": s[4],
+                      "longitude": lon,
+                      "latitude": lat,
+                      "baro_altitude": s[7],
+                      "on_ground": s[8],
+                      "velocity": s[9],
+                      "heading": s[10],
+                      "vertical_rate": s[11] if len(s) > 11 else None,
+                      "geo_altitude": s[13] if len(s) > 13 else None,
+                      "squawk": s[14] if len(s) > 14 else None
+                  })
+
+          out = {"timestamp": int(time.time()), "count": len(filtered), "states": filtered}
+          path = "docs/data/flights.json"
+          os.makedirs(os.path.dirname(path), exist_ok=True)
+          with open(path, "w") as f:
+              json.dump(out, f, indent=2)
+          print("Wrote", path)
+        env:
+          TZ: 'UTC'
+
+      - name: Commit and push data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/flights.json
+          git commit -m "Update flights.json" || echo "No changes to commit"
+          git push
