@@ -16,7 +16,7 @@ jobs:
         run: |
           mkdir -p docs/data
           curl -s "https://opensky-network.org/api/states/all?lamin=28&lomin=38&lamax=37&lomax=49" \
-          | jq '{states: .states}' > docs/data/flights.json
+          > docs/data/flights.json
 
       - name: Commit data
         run: |
